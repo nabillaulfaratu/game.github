@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Grand Prix 3D - Ratu Game</title>
+    <!-- Memuat Library Three.js dari CDN yang stabil -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <style>
+        /* RESET DASAR & TAMPILAN PREMIUM SPORTY */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0b0b0f;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+
+        /* --- HUD GAME (Atas Layar) --- */
+        #game-hud {
+            position: absolute;
+            top: 15px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .player-hud {
+            background: rgba(10, 10, 15, 0.9); /* Tema gelap transparan sporty */
+            color: white; 
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-weight: bold;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            width: 190px;
+            border-top: 4px solid #fff;
+            transition: opacity 0.3s, transform 0.2s;
+            pointer-events: auto; /* Memungkinkan interaksi tombol skala */
+        }
+
+        .p1-hud { border-color: #ff7096; } /* Warna Pink Cerah Soft */
+        .p2-hud { border-color: #48cae4; display: none; } /* Warna Biru Cerah Soft */
+
+        .hud-name {
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .p1-hud .hud-name { color: #ff7096; }
+        .p2-hud .hud-name { color: #48cae4; }
+
+        .hud-row {
+            font-size: 0.85rem;
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* PANEL KONTROL SKALA PADA HUD */
+        .scale-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .scale-label {
+            font-size: 0.75rem;
+            color: #b2bec3;
+            font-weight: normal;
+        }
+
+        .scale-btn-group {
+            display: flex;
+            gap: 5px;
+        }
+
+        .scale-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            width: 26px;
+            height: 22px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .p1-hud .scale-btn:hover {
+            background: #ff7096;
+            border-color: #ff7096;
+            color: #111;
+        }
+
+        .p2-hud .scale-btn:hover {
+            background: #48cae4;
+            border-color: #48cae4;
+            color: #111;
+        }
+
+        #hud-center {
+            background: rgba(10, 10, 15, 0.85);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            border: 1.5px solid #00ffcc;
+            max-width: 40%;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 255, 204, 0.35);
+        }
+
+        /* --- HITUNGAN MUNDUR --- */
+        #countdown-overlay {
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 7rem;
+            font-weight: 900;
+            color: #FFD700;
+            text-shadow: 0 0 25px rgba(255,215,0,0.7), 4px 4px 0px #000;
+            display: none;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* --- MENU UTAMA BALAPAN (SPORTY RACING STYLE) --- */
+        #main-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 15, 22, 0.96); /* Menu Gelap Modern */
+            color: #fff;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 20px rgba(0,255,204,0.35);
+            text-align: center;
+            width: 90%;
+            max-width: 420px;
+            z-index: 8;
+            border: 2px solid #00ffcc;
+            transition: opacity 0.3s ease;
+        }
+
+        #main-menu h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.8rem;
+            letter-spacing: 1.5px;
+            color: #00ffcc;
+            text-shadow: 0 0 12px rgba(0,255,204,0.4);
+        }
+
+        .subtitle {
+            margin: 0 0 20px 0;
+            font-size: 0.85rem;
+            color: #8a99ad;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .instructions {
+            text-align: left;
+            font-size: 0.85rem;
+            color: #d1d9e6;
+            background: rgba(255, 255, 255, 0.04);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .instructions p { margin: 6px 0; }
+
+        .warning-box {
+            font-size: 0.8rem;
+            color: #ff7096;
+            background: rgba(255, 112, 150, 0.08);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ff7096;
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        /* BUTTONS */
+        button {
+            font-family: inherit;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00ffcc 0%, #00bc8c 100%);
+            color: #020205;
+            padding: 14px;
+            font-size: 1.05rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(0,255,204,0.25);
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,255,204,0.45);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+            color: #fff;
+            padding: 14px;
+            font-size: 1.05rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(116,185,255,0.25);
+        }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(116,185,255,0.45);
+        }
+
+        .btn-secondary {
+            background: #222530;
+            color: #cbd5e1;
+            padding: 10px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .btn-secondary:hover { background: #2d3142; color: #fff; }
+
+        /* --- CONTROLS MOBILE / HP --- */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            display: none; /* Dinyalakan otomatis jika touchscreen terdeteksi */
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            pointer-events: none;
+            z-index: 6;
+        }
+
+        .p1-controls, .p2-controls {
+            display: flex;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .p2-controls {
+            display: none; 
+        }
+
+        .touch-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(20, 20, 30, 0.7);
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            color: #fff;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+        }
+
+        .touch-btn:active {
+            transform: scale(0.9);
+        }
+
+        #ctrls-p1 .touch-btn:active {
+            background: rgba(255, 118, 117, 0.4);
+            border-color: #ff7096;
+            box-shadow: 0 0 15px rgba(255, 118, 117, 0.6);
+        }
+
+        #ctrls-p2 .touch-btn:active {
+            background: rgba(116, 185, 255, 0.4);
+            border-color: #48cae4;
+            box-shadow: 0 0 15px rgba(116, 185, 255, 0.6);
+        }
+
+        /* RESPONSIVE LAYOUT UNTUK HP */
+        @media (max-width: 600px) {
+            #game-hud {
+                padding: 0 10px;
+            }
+            .player-hud {
+                width: 145px;
+                padding: 8px 12px;
+            }
+            .hud-name { font-size: 0.85rem; }
+            .hud-row { font-size: 0.7rem; }
+            #hud-center {
+                font-size: 0.65rem;
+                padding: 6px 12px;
+                max-width: 35%;
+            }
+            #main-menu {
+                padding: 20px;
+            }
+            #main-menu h1 { font-size: 1.4rem; }
+            .touch-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 0.95rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- AREA RENDERING 3D -->
+    <div id="canvas-container"></div>
+
+    <!-- UI SKOR & SPEEDOMETER (Atas Layar) -->
+    <div id="game-hud">
+        <!-- HUD PLAYER 1 (Pink) -->
+        <div class="player-hud p1-hud" id="hud-p1">
+            <div class="hud-name">P1 (PINK)</div>
+            <div class="hud-row"><span>💎 Skor</span><span id="score-p1">0</span></div>
+            <div class="hud-row"><span>⚡ Speed</span><span id="speed-p1">0</span> km/h</div>
+            <!-- Fitur Modifikasi Skala Mobil (Transformasi Wajib Dosen) -->
+            <div class="scale-control">
+                <span class="scale-label">📐 Skala P1</span>
+                <div class="scale-btn-group">
+                    <button class="scale-btn" id="btn-p1-scale-down" title="Perkecil Mobil P1">-</button>
+                    <button class="scale-btn" id="btn-p1-scale-up" title="Perbesar Mobil P1">+</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PETUNJUK BALAPAN DI TENGAH -->
+        <div id="hud-center">
+            <span id="hud-msg">💎 AMBIL BERLIAN PELANGI | 🚧 HINDARI GAWANG ATLETIK!</span>
+        </div>
+
+        <!-- HUD PLAYER 2 (Biru) -->
+        <div class="player-hud p2-hud" id="hud-p2">
+            <div class="hud-name">P2 (BLUE)</div>
+            <div class="hud-row"><span>💎 Skor</span><span id="score-p2">0</span></div>
+            <div class="hud-row"><span>⚡ Speed</span><span id="speed-p2">0</span> km/h</div>
+            <!-- Fitur Modifikasi Skala Mobil -->
+            <div class="scale-control">
+                <span class="scale-label">📐 Skala P2</span>
+                <div class="scale-btn-group">
+                    <button class="scale-btn" id="btn-p2-scale-down" title="Perkecil Mobil P2">-</button>
+                    <button class="scale-btn" id="btn-p2-scale-up" title="Perbesar Mobil P2">+</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OVERLAY HITUNGAN MUNDUR -->
+    <div id="countdown-overlay">3</div>
+
+    <!-- MENU UTAMA -->
+    <div id="main-menu">
+        <h1>🏆 GRAND PRIX RACER 3D</h1>
+        <p class="subtitle">Tugas Grafikom - Pemrograman Game Web 3D</p>
+        
+        <div class="instructions">
+            <p><strong>Cara Bermain (PC):</strong></p>
+            <p>🚗 <strong>P1 (Pink)</strong>: Tombol <strong>A / D</strong></p>
+            <p>🚙 <strong>P2 (Biru)</strong>: Tombol <strong>Panah Kiri / Kanan</strong></p>
+            <p>📱 <strong>Cara Bermain (HP):</strong> Tekan tombol kemudi kiri & kanan di ujung bawah layar!</p>
+        </div>
+
+        <div class="warning-box">
+            🚧 INFO TRANSFORMATION: Gunakan tombol skala [ − ] dan [ + ] pada HUD! Saat skala mobil 0.6, kamu bisa meluncur melewati kolong gawang tanpa hancur!
+        </div>
+
+        <!-- Pilihan Mode Bermain -->
+        <div class="menu-buttons">
+            <button id="btn-solo" class="btn-primary">🚗 Main Sendiri (1 Player)</button>
+            <button id="btn-duo" class="btn-success">🚗 vs 🚙 Mabar Berdua (2 Player)</button>
+            <button id="btn-mute" class="btn-secondary">🔊 Suara: AKTIF</button>
+        </div>
+    </div>
+
+    <!-- TOMBOL VIRTUAL UNTUK HP -->
+    <div id="mobile-controls">
+        <!-- Tombol P1 (Kiri) -->
+        <div class="p1-controls" id="ctrls-p1">
+            <button class="touch-btn" id="btn-p1-left">◀ P1</button>
+            <button class="touch-btn" id="btn-p1-right">P1 ▶</button>
+        </div>
+        <!-- Tombol P2 (Kanan) -->
+        <div class="p2-controls" id="ctrls-p2">
+            <button class="touch-btn" id="btn-p2-left">◀ P2</button>
+            <button class="touch-btn" id="btn-p2-right">P2 ▶</button>
+        </div>
+    </div>
+
+    <!-- LOGIKA UTAMA GAME -->
+    <script>
+        // Memastikan seluruh script dijalankan tepat setelah halaman web siap
+        window.onload = function() {
+            
+            // === SINTESIS AUDIO AMAN (WEB AUDIO API) ===
+            let audioCtx = null;
+            let isSoundMuted = false;
+
+            function initAudio() {
+                try {
+                    if (!audioCtx) {
+                        const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                        if (AudioCtxClass) {
+                            audioCtx = new AudioCtxClass();
+                        }
+                    }
+                    if (audioCtx && audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                } catch (e) {
+                    console.warn("AudioContext tidak didukung browser ini.", e);
+                }
+            }
+
+            function playSound(type) {
+                if (isSoundMuted) return;
+                try {
+                    initAudio();
+                    if (!audioCtx) return;
+                    const ctx = audioCtx;
+                    const now = ctx.currentTime;
+
+                    if (type === 'countdown') {
+                        let osc = ctx.createOscillator();
+                        let gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(440, now); 
+                        gain.gain.setValueAtTime(0.08, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                        osc.start(now); osc.stop(now + 0.12);
+                    } 
+                    else if (type === 'start') {
+                        let osc = ctx.createOscillator();
+                        let gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(523.25, now);
+                        osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.35);
+                        gain.gain.setValueAtTime(0.12, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                        osc.start(now); osc.stop(now + 0.35);
+                    } 
+                    else if (type === 'collect') {
+                        let osc = ctx.createOscillator();
+                        let gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(587.33, now); 
+                        osc.frequency.setValueAtTime(880, now + 0.08); 
+                        gain.gain.setValueAtTime(0.1, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                        osc.start(now); osc.stop(now + 0.25);
+                    } 
+                    else if (type === 'crash') {
+                        let oscThump = ctx.createOscillator();
+                        let gainThump = ctx.createGain();
+                        oscThump.connect(gainThump); gainThump.connect(ctx.destination);
+                        oscThump.type = 'triangle';
+                        oscThump.frequency.setValueAtTime(160, now);
+                        oscThump.frequency.exponentialRampToValueAtTime(10, now + 0.45);
+                        gainThump.gain.setValueAtTime(0.35, now);
+                        gainThump.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+                        oscThump.start(now); oscThump.stop(now + 0.45);
+
+                        const bufferSize = ctx.sampleRate * 0.65;
+                        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        for (let i = 0; i < bufferSize; i++) {
+                            data[i] = Math.random() * 2 - 1;
+                        }
+                        const noiseNode = ctx.createBufferSource();
+                        noiseNode.buffer = buffer;
+                        const filter = ctx.createBiquadFilter();
+                        filter.type = 'lowpass';
+                        filter.frequency.setValueAtTime(900, now);
+                        filter.frequency.exponentialRampToValueAtTime(20, now + 0.65);
+                        const gainNoise = ctx.createGain();
+                        gainNoise.gain.setValueAtTime(0.3, now);
+                        gainNoise.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+                        noiseNode.connect(filter); filter.connect(gainNoise); gainNoise.connect(ctx.destination);
+                        noiseNode.start(now); noiseNode.stop(now + 0.65);
+                    } 
+                    else if (type === 'click') {
+                        let osc = ctx.createOscillator();
+                        let gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(350, now);
+                        osc.frequency.exponentialRampToValueAtTime(700, now + 0.05);
+                        gain.gain.setValueAtTime(0.05, now);
+                        gain.gain.linearRampToValueAtTime(0.001, now + 0.05);
+                        osc.start(now); osc.stop(now + 0.05);
+                    }
+                } catch (e) {
+                    console.warn("Gagal memutar audio:", e);
+                }
+            }
+
+            // === 1. SETUP ENGINE THREE.JS ===
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x7ac1eb); // Langit biru balapan yang cerah kembali
+            scene.fog = new THREE.Fog(0x7ac1eb, 15, 60);
+
+            const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5.5, 12); 
+            camera.lookAt(0, 1.2, -2);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // === 2. PENCAHAYAAN SIRKUIT ===
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfffaed, 1.2); 
+            sunLight.position.set(20, 40, 20);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 1024;
+            sunLight.shadow.mapSize.height = 1024;
+            scene.add(sunLight);
+
+            // === 3. DUNIA BALAP (RUMPUT, SIRKUIT, KERB, GERBANG START) ===
+
+            // A. Tanah Rumput Hijau Balapan
+            const grassGeo = new THREE.PlaneGeometry(300, 300);
+            const grassMat = new THREE.MeshStandardMaterial({ color: 0x3b9c40, roughness: 0.9 }); // Hijau alami segar kembali
+            const grass = new THREE.Mesh(grassGeo, grassMat);
+            grass.rotation.x = -Math.PI / 2;
+            grass.position.y = -0.01;
+            grass.receiveShadow = true;
+            scene.add(grass);
+
+            // B. Jalur Lintasan Sirkuit (Aspal Gelap Racing)
+            const trackWidth = 14;
+            const roadGeo = new THREE.PlaneGeometry(trackWidth, 120);
+            const roadMat = new THREE.MeshStandardMaterial({ color: 0x222225, roughness: 0.8 }); // Aspal balap gelap
+            const road = new THREE.Mesh(roadGeo, roadMat);
+            road.rotation.x = -Math.PI / 2;
+            road.receiveShadow = true;
+            scene.add(road);
+
+            // C. Garis Putih Putus-putus Tengah Jalan
+            const roadMarks = [];
+            for (let i = 0; i < 18; i++) {
+                const mark = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.3, 4), 
+                    new THREE.MeshBasicMaterial({ color: 0xffffff })
+                );
+                mark.rotation.x = -Math.PI / 2;
+                mark.position.set(0, 0.02, -50 + (i * 7));
+                scene.add(mark);
+                roadMarks.push(mark);
+            }
+
+            // D. Kerb Racing Merah-Putih (Pembatas Sirkuit GT Profesional)
+            const leftKerbs = [];
+            const rightKerbs = [];
+            const kerbLength = 5;
+            for (let i = 0; i < 24; i++) {
+                const leftKerb = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.8, 0.15, kerbLength),
+                    new THREE.MeshStandardMaterial({ color: (i % 2 === 0) ? 0xff3333 : 0xffffff, roughness: 0.7 })
+                );
+                leftKerb.position.set(-trackWidth/2 - 0.4, 0.07, -50 + (i * kerbLength));
+                leftKerb.receiveShadow = true;
+                scene.add(leftKerb);
+                leftKerbs.push(leftKerb);
+
+                const rightKerb = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.8, 0.15, kerbLength),
+                    new THREE.MeshStandardMaterial({ color: (i % 2 === 0) ? 0xffffff : 0xff3333, roughness: 0.7 })
+                );
+                rightKerb.position.set(trackWidth/2 + 0.4, 0.07, -50 + (i * kerbLength));
+                rightKerb.receiveShadow = true;
+                scene.add(rightKerb);
+                rightKerbs.push(rightKerb);
+            }
+
+            // E. Gerbang Start Balapan Profesional
+            const archGroup = new THREE.Group();
+            const pillarMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, metalness: 0.8, roughness: 0.2 }); 
+            const bannerMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 }); 
+
+            const pillarLeft = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 6, 8), pillarMat);
+            pillarLeft.position.set(-trackWidth/2 - 0.2, 3, 0);
+            pillarLeft.castShadow = true;
+            archGroup.add(pillarLeft);
+
+            const pillarRight = pillarLeft.clone();
+            pillarRight.position.set(trackWidth/2 + 0.2, 3, 0);
+            archGroup.add(pillarRight);
+
+            const banner = new THREE.Mesh(new THREE.BoxGeometry(trackWidth + 1, 1.4, 0.8), bannerMat);
+            banner.position.set(0, 6, 0);
+            banner.castShadow = true;
+            archGroup.add(banner);
+
+            const textStartBox = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 0.9), new THREE.MeshBasicMaterial({ color: 0xffcc00 }));
+            textStartBox.position.set(0, 6, 0.05);
+            archGroup.add(textStartBox);
+
+            archGroup.position.set(0, 0, 4); 
+            scene.add(archGroup);
+
+            // F. Garis Lintasan Putih Start
+            const startLine = new THREE.Mesh(new THREE.PlaneGeometry(12, 1.5), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+            startLine.rotation.x = -Math.PI / 2;
+            startLine.position.set(0, 0.03, 5); 
+            scene.add(startLine);
+
+            // G. Pepohonan Sirkuit (Warna Hijau Daun Alami)
+            function createTree(x, z) {
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.5, 2.5, 8), new THREE.MeshStandardMaterial({ color: 0x5c4033 }));
+                trunk.position.y = 1.25; trunk.castShadow = true; tree.add(trunk);
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(1.8, 4, 8), new THREE.MeshStandardMaterial({ color: 0x1e7822, roughness: 0.8 }));
+                leaves.position.y = 4; leaves.castShadow = true; tree.add(leaves);
+                tree.position.set(x, 0, z);
+                scene.add(tree);
+                return tree;
+            }
+            const trees = [];
+            for (let i = 0; i < 12; i++) {
+                trees.push(createTree(-trackWidth/2 - 3.5, -45 + (i * 9)));
+                trees.push(createTree(trackWidth/2 + 3.5, -45 + (i * 9)));
+            }
+
+            // === 4. DESAIN MOBIL GT BALAP (SEKARANG DENGAN WARNA PASTEL SOLID HARMONIS) ===
+            function createGTCar(bodyColorHex, stripeColorHex) {
+                const group = new THREE.Group();
+                
+                // Material bodi menggunakan warna dasar pastel cerah dari pilihan user
+                const bodyMat = new THREE.MeshStandardMaterial({ color: bodyColorHex, metalness: 0.1, roughness: 0.1 }); 
+                // Strip bodi menggunakan warna kontras tipis yang serasi (stripeColorHex) - TANPA PUTIH
+                const stripeMat = new THREE.MeshStandardMaterial({ color: stripeColorHex, metalness: 0.2, roughness: 0.3 }); 
+                
+                const cabinMat = new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.2 }); // Kaca kabin gelap/hitam
+                const blackDetailsMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 }); 
+
+                // A. Sasis / Bodi Utama (MENGGUNAKAN WARNA PASTEL LEMBUT INDAH)
+                const bodyGeo = new THREE.BoxGeometry(1.6, 0.45, 3.2);
+                const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+                bodyMesh.position.y = 0.4;
+                bodyMesh.castShadow = true;
+                group.add(bodyMesh);
+
+                // B. Garis Balap / Racing Stripe Tengah
+                const stripeGeo = new THREE.BoxGeometry(0.3, 0.05, 3.22);
+                const stripeMesh = new THREE.Mesh(stripeGeo, stripeMat);
+                stripeMesh.position.set(0, 0.63, 0);
+                stripeMesh.castShadow = true;
+                group.add(stripeMesh);
+
+                // C. Kabin Atap Mobil (Tetap Hitam Sporty)
+                const cabinGeo = new THREE.BoxGeometry(1.2, 0.6, 1.5);
+                const cabinMesh = new THREE.Mesh(cabinGeo, cabinMat);
+                cabinMesh.position.set(0, 0.85, 0.2);
+                cabinMesh.castShadow = true;
+                group.add(cabinMesh);
+
+                // D. Spoiler Belakang (Penyangga Hitam, Sayap sewarna bodi utama)
+                const spoilerArchLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.1), blackDetailsMat);
+                spoilerArchLeft.position.set(-0.6, 0.8, 1.4);
+                group.add(spoilerArchLeft);
+
+                const spoilerArchRight = spoilerArchLeft.clone();
+                spoilerArchRight.position.x = 0.6;
+                group.add(spoilerArchRight);
+
+                const wing = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.08, 0.5), bodyMat);
+                wing.position.set(0, 1.05, 1.4);
+                wing.castShadow = true;
+                group.add(wing);
+
+                // E. Lampu Depan Menyala Terang
+                const lightGeo = new THREE.BoxGeometry(0.3, 0.15, 0.1);
+                const lightMat = new THREE.MeshBasicMaterial({ color: 0xfffa90 });
+                const leftLight = new THREE.Mesh(lightGeo, lightMat);
+                leftLight.position.set(-0.55, 0.45, -1.6);
+                group.add(leftLight);
+
+                const rightLight = leftLight.clone();
+                rightLight.position.x = 0.55;
+                group.add(rightLight);
+
+                function createWheel(x, z) {
+                    const wheel = new THREE.Mesh(
+                        new THREE.CylinderGeometry(0.36, 0.36, 0.3, 16), 
+                        new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.9 })
+                    );
+                    wheel.rotation.z = Math.PI / 2;
+                    wheel.position.set(x, 0.36, z);
+                    wheel.castShadow = true;
+                    group.add(wheel);
+                }
+                createWheel(-0.9, -1.0); createWheel(0.9, -1.0); 
+                createWheel(-0.9, 1.0); createWheel(0.9, 1.0);   
+
+                // Menyimpan referensi agar bodi utama & sayap (bodyMat) serta striping (stripeMat) dapat diakses
+                group.userData = { 
+                    bodyMat: bodyMat,
+                    stripeMat: stripeMat,
+                    bodyMesh: bodyMesh 
+                };
+                return group;
+            }
+
+            // Mobil Balap GT Utama (Masing-masing diwarnai pastel secara dominan dan striping senada tanpa warna putih!)
+            const carP1 = createGTCar(0xff7096, 0xff477e); // P1: Soft Pink Pastel cerah (0xff7096) dengan garis pink tua (0xff477e)
+            carP1.position.set(-2, 0, 5.5); 
+            scene.add(carP1);
+
+            const carP2 = createGTCar(0x48cae4, 0x0096c7); // P2: Soft Sky Blue Pastel cerah (0x48cae4) dengan garis biru tua (0x0096c7)
+            carP2.position.set(2, 0, 5.5); 
+            scene.add(carP2);
+
+            // === 5. DESAIN: BERLIAN PELANGI BERKILAU ===
+            function createRainbowDiamond() {
+                const group = new THREE.Group();
+                const gemMesh = new THREE.Mesh(
+                    new THREE.OctahedronGeometry(0.55),
+                    new THREE.MeshStandardMaterial({ color: 0x00ffff, metalness: 1.0, roughness: 0.05, emissive: 0x003333, emissiveIntensity: 1.5 })
+                );
+                gemMesh.castShadow = true;
+                group.add(gemMesh);
+
+                const particles = [];
+                const pGeo = new THREE.SphereGeometry(0.07, 4, 4);
+                const pMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                for (let i = 0; i < 3; i++) {
+                    const p = new THREE.Mesh(pGeo, pMat);
+                    p.userData = {
+                        angle: Math.random() * Math.PI * 2,
+                        radius: 0.8 + Math.random() * 0.3,
+                        speed: 0.03 + Math.random() * 0.03,
+                        heightMultiplier: (Math.random() - 0.5) * 0.8
+                    };
+                    group.add(p);
+                    particles.push(p);
+                }
+                group.userData = { gemMesh: gemMesh, particles: particles };
+                return group;
+            }
+
+            const diamonds = [];
+            for(let i = 0; i < 3; i++) {
+                const d = createRainbowDiamond();
+                scene.add(d);
+                diamonds.push(d);
+            }
+
+            // === 6. DESAIN RINTANGAN: GAWANG ATLETIK PRO (ATLET HURDLE) ===
+            function createAthleticHurdle() {
+                const hurdle = new THREE.Group();
+                
+                const metalMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.3, metalness: 0.85 });
+                const stripeRedMat = new THREE.MeshStandardMaterial({ color: 0xff5252, roughness: 0.6 }); 
+                const stripeWhiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+                const footMat = new THREE.MeshStandardMaterial({ color: 0xff5252, roughness: 0.5 }); // Dasar kaki merah
+                
+                // Tiang Vertikal Metalik (Kiri & Kanan)
+                const poleGeo = new THREE.CylinderGeometry(0.07, 0.07, 1.4, 8);
+                
+                const leftPole = new THREE.Mesh(poleGeo, metalMat);
+                leftPole.position.set(-1.4, 0.7, 0);
+                leftPole.castShadow = true;
+                hurdle.add(leftPole);
+                
+                const rightPole = leftPole.clone();
+                rightPole.position.x = 1.4;
+                hurdle.add(rightPole);
+                
+                // Palang Pembatas Strip Merah-Putih di Atas
+                const segmentWidth = 3.0 / 5;
+                const barHeight = 0.22;
+                const barDepth = 0.12;
+                const barY = 1.35;
+                
+                for (let i = 0; i < 5; i++) {
+                    const segGeo = new THREE.BoxGeometry(segmentWidth, barHeight, barDepth);
+                    const segMat = (i % 2 === 0) ? stripeRedMat : stripeWhiteMat;
+                    const segMesh = new THREE.Mesh(segGeo, segMat);
+                    segMesh.position.set(-1.2 + (i * segmentWidth), barY, 0);
+                    segMesh.castShadow = true;
+                    hurdle.add(segMesh);
+                }
+                
+                // Kaki Dasar L-shaped di Tanah
+                const footLength = 1.1;
+                const footGeo = new THREE.CylinderGeometry(0.07, 0.07, footLength, 8);
+                
+                const leftFoot = new THREE.Mesh(footGeo, footMat);
+                leftFoot.rotation.x = Math.PI / 2;
+                leftFoot.position.set(-1.4, 0.05, 0);
+                leftFoot.castShadow = true;
+                hurdle.add(leftFoot);
+                
+                const rightFoot = leftFoot.clone();
+                rightFoot.position.x = 1.4;
+                hurdle.add(rightFoot); // Memperbaiki error ketidaksengajaan self-nesting rightFoot
+
+                // Ujung kaki bulat putih kontras
+                const tipGeo = new THREE.SphereGeometry(0.1, 8, 8);
+                const tipMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+                
+                const tipFL = new THREE.Mesh(tipGeo, tipMat); tipFL.position.set(-1.4, 0.05, -0.55); hurdle.add(tipFL);
+                const tipBL = new THREE.Mesh(tipGeo, tipMat); tipBL.position.set(-1.4, 0.05, 0.55); hurdle.add(tipBL);
+                const tipFR = new THREE.Mesh(tipGeo, tipMat); tipFR.position.set(1.4, 0.05, -0.55); hurdle.add(tipFR);
+                const tipBR = new THREE.Mesh(tipGeo, tipMat); tipBR.position.set(1.4, 0.05, 0.55); hurdle.add(tipBR);
+
+                // Lampu Sirene Pengaman Kuning di Atas
+                const beacon = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.18, 8, 8),
+                    new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 1.5 })
+                );
+                beacon.position.set(0, 1.55, 0);
+                hurdle.add(beacon);
+
+                hurdle.userData = { beacon: beacon };
+                return hurdle;
+            }
+
+            const obstacles = [];
+            for(let i = 0; i < 2; i++) {
+                const obsGroup = createAthleticHurdle();
+                scene.add(obsGroup);
+                obstacles.push(obsGroup);
+            }
+
+            // === 7. VARIABEL KONTROL & LOGIKA PERMAINAN ===
+            let isTwoPlayerMode = false;
+            let isPlaying = false;
+            let isCountdown = false;
+            let gameSpeed = 0.0;
+            let baseSpeed = 0.45; 
+
+            let isP1Alive = true;
+            let isP2Alive = true;
+
+            let scoreP1 = 0;
+            let scoreP2 = 0;
+
+            const keysPressed = {};
+            const touchActions = {
+                p1Left: false, p1Right: false,
+                p2Left: false, p2Right: false
+            };
+
+            const scoreUI_P1 = document.getElementById('score-p1');
+            const scoreUI_P2 = document.getElementById('score-p2');
+            const speedUI_P1 = document.getElementById('speed-p1');
+            const speedUI_P2 = document.getElementById('speed-p2');
+            const hudP1 = document.getElementById('hud-p1');
+            const hudP2 = document.getElementById('hud-p2');
+            const mobileCtrls = document.getElementById('mobile-controls');
+            const mobileP2Ctrls = document.getElementById('ctrls-p2');
+            const mainMenu = document.getElementById('main-menu');
+            const countdownOverlay = document.getElementById('countdown-overlay');
+
+            function resetObject(obj, zPos) {
+                obj.position.y = 0.6; 
+                obj.position.z = zPos;
+                const lanes = [-4.5, 0, 4.5];
+                obj.position.x = lanes[Math.floor(Math.random() * lanes.length)];
+            }
+
+            function setupLevel() {
+                diamonds.forEach((d, index) => resetObject(d, -20 - (index * 22)));
+                obstacles.forEach((o, index) => resetObject(o, -45 - (index * 35)));
+            }
+            setupLevel();
+
+            // === 8. MANAJEMEN EVENT LISTENER ===
+
+            window.addEventListener('keydown', (e) => {
+                keysPressed[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', (e) => {
+                keysPressed[e.key.toLowerCase()] = false;
+            });
+
+            function setupMobileButton(elemId, actionProp) {
+                const elem = document.getElementById(elemId);
+                if (!elem) return;
+                
+                elem.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    initAudio();
+                    touchActions[actionProp] = true;
+                }, { passive: false });
+                
+                elem.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    touchActions[actionProp] = false;
+                }, { passive: false });
+
+                elem.addEventListener('mousedown', () => {
+                    initAudio();
+                    touchActions[actionProp] = true;
+                });
+                elem.addEventListener('mouseup', () => {
+                    touchActions[actionProp] = false;
+                });
+                elem.addEventListener('mouseleave', () => {
+                    touchActions[actionProp] = false;
+                });
+            }
+
+            setupMobileButton('btn-p1-left', 'p1Left');
+            setupMobileButton('btn-p1-right', 'p1Right');
+            setupMobileButton('btn-p2-left', 'p2Left');
+            setupMobileButton('btn-p2-right', 'p2Right');
+
+            // Aktifkan mode input mobile jika terdeteksi touchscreen
+            window.addEventListener('touchstart', function onFirstTouch() {
+                mobileCtrls.style.display = 'flex';
+                window.removeEventListener('touchstart', onFirstTouch);
+            });
+
+            // === 9. LOGIKA INTERAKSI MODIFIKASI SKALA MOBIL (PILIHAN DOSEN) ===
+            
+            // Player 1 Scaling
+            document.getElementById('btn-p1-scale-up').addEventListener('click', () => {
+                initAudio(); playSound('click');
+                let s = carP1.scale.x;
+                if (s < 1.8) {
+                    s += 0.2;
+                    carP1.scale.set(s, s, s);
+                }
+            });
+            document.getElementById('btn-p1-scale-down').addEventListener('click', () => {
+                initAudio(); playSound('click');
+                let s = carP1.scale.x;
+                if (s > 0.6) {
+                    s -= 0.2;
+                    carP1.scale.set(s, s, s);
+                }
+            });
+
+            // Player 2 Scaling
+            document.getElementById('btn-p2-scale-up').addEventListener('click', () => {
+                initAudio(); playSound('click');
+                let s = carP2.scale.x;
+                if (s < 1.8) {
+                    s += 0.2;
+                    carP2.scale.set(s, s, s);
+                }
+            });
+            document.getElementById('btn-p2-scale-down').addEventListener('click', () => {
+                initAudio(); playSound('click');
+                let s = carP2.scale.x;
+                if (s > 0.6) {
+                    s -= 0.2;
+                    carP2.scale.set(s, s, s);
+                }
+            });
+
+            // === 10. LOGIKA MULAI BALAPAN ===
+
+            function startGrandPrix(twoPlayers) {
+                isTwoPlayerMode = twoPlayers;
+                mainMenu.style.display = 'none';
+                isCountdown = true;
+                
+                isP1Alive = true;
+                carP1.position.set(isTwoPlayerMode ? -2 : 0, 0, 5.5);
+                carP1.scale.set(1, 1, 1); // Reset skala ke normal
+                carP1.visible = true;
+                hudP1.style.opacity = '1';
+                scoreP1 = 0;
+                scoreUI_P1.innerText = scoreP1;
+
+                if (isTwoPlayerMode) {
+                    isP2Alive = true;
+                    carP2.position.set(2, 0, 5.5);
+                    carP2.scale.set(1, 1, 1); // Reset skala ke normal
+                    carP2.visible = true;
+                    hudP2.style.display = 'block';
+                    hudP2.style.opacity = '1';
+                    mobileP2Ctrls.style.display = 'flex';
+                    scoreP2 = 0;
+                    scoreUI_P2.innerText = scoreP2;
+                } else {
+                    isP2Alive = false;
+                    carP2.visible = false;
+                    hudP2.style.display = 'none';
+                    mobileP2Ctrls.style.display = 'none';
+                }
+
+                startLine.position.z = 4; 
+                archGroup.position.z = 4; 
+                setupLevel();
+
+                countdownOverlay.style.display = 'block';
+                let count = 3;
+                countdownOverlay.innerText = count;
+                playSound('countdown');
+
+                const interval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        countdownOverlay.innerText = count;
+                        playSound('countdown');
+                    } else if (count === 0) {
+                        countdownOverlay.innerText = "MULAI!";
+                        countdownOverlay.style.color = "#00ffcc";
+                        playSound('start');
+                    } else {
+                        clearInterval(interval);
+                        countdownOverlay.style.display = 'none';
+                        countdownOverlay.style.color = "#FFD700"; 
+
+                        isCountdown = false;
+                        isPlaying = true;
+                        gameSpeed = baseSpeed;
+                    }
+                }, 1000);
+            }
+
+            document.getElementById('btn-solo').addEventListener('click', () => {
+                initAudio();
+                startGrandPrix(false); 
+            });
+
+            document.getElementById('btn-duo').addEventListener('click', () => {
+                initAudio();
+                startGrandPrix(true); 
+            });
+
+            const btnMute = document.getElementById('btn-mute');
+            btnMute.addEventListener('click', () => {
+                initAudio();
+                isSoundMuted = !isSoundMuted;
+                if (isSoundMuted) {
+                    btnMute.innerText = '🔇 Suara: MATI';
+                } else {
+                    btnMute.innerText = '🔊 Suara: AKTIF';
+                    playSound('click');
+                }
+            });
+
+            // PALET PASANGAN WARNA PASTEL LEMBUT & CERAH DARI GAMBAR REFERENSI RATU (body & striping)
+            const pastelPairs = [
+                { body: 0xffb3c6, stripe: 0xff4f79 }, // Pink Lembut - Pink Kontras
+                { body: 0xbde0fe, stripe: 0x48cae4 }, // Biru Lembut - Biru Kontras
+                { body: 0xffc6ff, stripe: 0xff477e }, // Ungu Pink Lembut - Magenta
+                { body: 0xbdb2ff, stripe: 0x7209b7 }, // Lavender - Violet
+                { body: 0x90e0ef, stripe: 0x0077b6 }, // Cyan Lembut - Biru Medium
+                { body: 0xe2f0cb, stripe: 0x4caf50 }, // Sage Green - Hijau Alami
+                { body: 0xfefae0, stripe: 0xd4a373 }, // Krem - Cokelat Soft
+                { body: 0xfbc4ab, stripe: 0xf08080 }, // Apricot - Peach Gelap
+                { body: 0xffcad4, stripe: 0xf7a3b3 }  // Peach Rose - Rose Pink
+            ];
+
+            // Ganti warna bodi mobil secara dinamis menggunakan raycaster klik mouse
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            window.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') return;
+                
+                // Deteksi koordinat klik mouse agar presisi & aman
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                raycaster.setFromCamera(mouse, camera);
+
+                // Deteksi klik pada Mobil 1 (Recursive true untuk mendeteksi seluruh komponen anak)
+                let intersects1 = raycaster.intersectObject(carP1, true);
+                if (intersects1.length > 0) {
+                    playSound('click');
+                    const randomPair = pastelPairs[Math.floor(Math.random() * pastelPairs.length)];
+                    carP1.userData.bodyMat.color.setHex(randomPair.body); // Mengubah warna bodi
+                    carP1.userData.stripeMat.color.setHex(randomPair.stripe); // Mengubah warna striping senada
+                }
+
+                // Deteksi klik pada Mobil 2 (Recursive true untuk mendeteksi seluruh komponen anak)
+                let intersects2 = raycaster.intersectObject(carP2, true);
+                if (intersects2.length > 0) {
+                    playSound('click');
+                    const randomPair = pastelPairs[Math.floor(Math.random() * pastelPairs.length)];
+                    carP2.userData.bodyMat.color.setHex(randomPair.body); // Mengubah warna bodi
+                    carP2.userData.stripeMat.color.setHex(randomPair.stripe); // Mengubah warna striping senada
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // === 11. ENGINE LOOP BALAPAN ===
+            function animate() {
+                requestAnimationFrame(animate);
+
+                try {
+                    // Sirene Kuning Gawang Berkedip Ritmis
+                    obstacles.forEach(obs => {
+                        if (obs.userData && obs.userData.beacon) {
+                            obs.userData.beacon.material.emissiveIntensity = 1.0 + Math.sin(Date.now() * 0.015) * 1.0;
+                        }
+                    });
+
+                    // Berlian Pelangi Ajaib Berputar & HSL Gradien Warna
+                    diamonds.forEach(dGroup => {
+                        const gemMesh = dGroup.userData.gemMesh;
+                        const particles = dGroup.userData.particles;
+
+                        const hue = (Date.now() * 0.0001) % 1.0; 
+                        gemMesh.material.color.setHSL(hue, 1.0, 0.55);
+                        gemMesh.material.emissive.setHSL((hue + 0.5) % 1.0, 1.0, 0.25); 
+
+                        gemMesh.rotation.x += 0.03;
+                        gemMesh.rotation.y += 0.03;
+
+                        particles.forEach(p => {
+                            p.userData.angle += p.userData.speed;
+                            p.position.x = Math.cos(p.userData.angle) * p.userData.radius;
+                            p.position.z = Math.sin(p.userData.angle) * p.userData.radius;
+                            p.position.y = Math.sin(p.userData.angle * 2) * p.userData.heightMultiplier;
+                        });
+                    });
+
+                    if (!isPlaying && !isCountdown) {
+                        diamonds.forEach((d, index) => { 
+                            d.position.y = 0.8 + Math.sin(Date.now() * 0.002 + index) * 0.15; 
+                        });
+                    }
+
+                    if (isPlaying) {
+                        roadMarks.forEach(mark => {
+                            mark.position.z += gameSpeed;
+                            if (mark.position.z > 15) mark.position.z = -50;
+                        });
+                        leftKerbs.forEach(k => {
+                            k.position.z += gameSpeed;
+                            if (k.position.z > 15) k.position.z = -50;
+                        });
+                        rightKerbs.forEach(k => {
+                            k.position.z += gameSpeed;
+                            if (k.position.z > 15) k.position.z = -50;
+                        });
+                        trees.forEach(tree => {
+                            tree.position.z += gameSpeed;
+                            if (tree.position.z > 15) tree.position.z = -50;
+                        });
+
+                        if (startLine.position.z < 25) startLine.position.z += gameSpeed;
+                        if (archGroup.position.z < 25) archGroup.position.z += gameSpeed;
+
+                        const currentSpeedKmh = Math.floor(gameSpeed * 350); 
+                        if (isP1Alive) speedUI_P1.innerText = currentSpeedKmh;
+                        if (isP2Alive) speedUI_P2.innerText = currentSpeedKmh;
+
+                        const slideSpeed = 0.16;
+
+                        // Pergerakan Player 1
+                        if (isP1Alive) {
+                            if ((keysPressed['a'] || touchActions.p1Left) && carP1.position.x > -trackWidth/2 + 1.2) {
+                                carP1.position.x -= slideSpeed;
+                                carP1.rotation.y = 0.15; 
+                            } else if ((keysPressed['d'] || touchActions.p1Right) && carP1.position.x < trackWidth/2 - 1.2) {
+                                carP1.position.x += slideSpeed;
+                                carP1.rotation.y = -0.15;
+                            } else {
+                                carP1.rotation.y *= 0.8; 
+                            }
+                        }
+
+                        // Pergerakan Player 2
+                        if (isP2Alive) {
+                            if ((keysPressed['arrowleft'] || touchActions.p2Left) && carP2.position.x > -trackWidth/2 + 1.2) {
+                                carP2.position.x -= slideSpeed;
+                                carP2.rotation.y = 0.15;
+                            } else if ((keysPressed['arrowright'] || touchActions.p2Right) && carP2.position.x < trackWidth/2 - 1.2) {
+                                carP2.position.x += slideSpeed;
+                                carP2.rotation.y = -0.15;
+                            } else {
+                                carP2.rotation.y *= 0.8;
+                            }
+                        }
+
+                        // --- LOGIKA TABRAKAN BERLIAN ---
+                        diamonds.forEach(diamond => {
+                            diamond.position.z += gameSpeed;
+
+                            if (isP1Alive) {
+                                const p1DistZ = Math.abs(diamond.position.z - carP1.position.z);
+                                const p1DistX = Math.abs(diamond.position.x - carP1.position.x);
+                                if (p1DistZ < 1.4 && p1DistX < (1.4 * carP1.scale.x)) {
+                                    scoreP1 += 10;
+                                    scoreUI_P1.innerText = scoreP1;
+                                    gameSpeed += 0.005; 
+                                    playSound('collect');
+                                    resetObject(diamond, -50);
+                                }
+                            }
+
+                            if (isP2Alive) {
+                                const p2DistZ = Math.abs(diamond.position.z - carP2.position.z);
+                                const p2DistX = Math.abs(diamond.position.x - carP2.position.x);
+                                if (p2DistZ < 1.4 && p2DistX < (1.4 * carP2.scale.x)) {
+                                    scoreP2 += 10;
+                                    scoreUI_P2.innerText = scoreP2;
+                                    gameSpeed += 0.005;
+                                    playSound('collect');
+                                    resetObject(diamond, -50);
+                                }
+                            }
+
+                            if (diamond.position.z > 12) {
+                                resetObject(diamond, -50);
+                            }
+                        });
+
+                        // --- LOGIKA TABRAKAN GAWANG ATLETIK ---
+                        obstacles.forEach(obs => {
+                            obs.position.z += gameSpeed;
+
+                            // Tabrakan Gawang dengan Player 1 (Mobil Merah)
+                            if (isP1Alive) {
+                                const p1DistZ = Math.abs(obs.position.z - carP1.position.z);
+                                const p1DistX = Math.abs(obs.position.x - carP1.position.x);
+                                const hitToleranceX = 1.5 + (0.75 * carP1.scale.x);
+                                
+                                if (p1DistZ < 1.5 && p1DistX < hitToleranceX) {
+                                    // Jika skala mobil P1 sangat kecil (<= 0.65), ia lolos meluncur melewati kolong gawang!
+                                    if (carP1.scale.x <= 0.65) {
+                                        document.getElementById('hud-msg').innerHTML = "✨ P1 LOLOS DI BAWAH KOLONG GAWANG! (SO SLIM!)";
+                                        document.getElementById('hud-msg').style.color = "#00ffcc";
+                                        setTimeout(() => {
+                                            document.getElementById('hud-msg').innerHTML = "💎 AMBIL BERLIAN PELANGI | 🚧 HINDARI GAWANG ATLETIK!";
+                                            document.getElementById('hud-msg').style.color = "#ffffff";
+                                        }, 1200);
+                                    } else {
+                                        isP1Alive = false;
+                                        carP1.visible = false; 
+                                        hudP1.style.opacity = '0.3';
+                                        speedUI_P1.innerText = "HANCUR";
+                                        playSound('crash');
+                                        checkGameStatus();
+                                    }
+                                }
+                            }
+
+                            // Tabrakan Gawang dengan Player 2 (Mobil Biru)
+                            if (isP2Alive) {
+                                const p2DistZ = Math.abs(obs.position.z - carP2.position.z);
+                                const p2DistX = Math.abs(obs.position.x - carP2.position.x);
+                                const hitToleranceX = 1.5 + (0.75 * carP2.scale.x);
+                                
+                                if (p2DistZ < 1.5 && p2DistX < hitToleranceX) {
+                                    // Jika skala mobil P2 sangat kecil (<= 0.65), ia lolos meluncur melewati kolong gawang!
+                                    if (carP2.scale.x <= 0.65) {
+                                        document.getElementById('hud-msg').innerHTML = "✨ P2 LOLOS DI BAWAH KOLONG GAWANG! (SO SLIM!)";
+                                        document.getElementById('hud-msg').style.color = "#00ffcc";
+                                        setTimeout(() => {
+                                            document.getElementById('hud-msg').innerHTML = "💎 AMBIL BERLIAN PELANGI | 🚧 HINDARI GAWANG ATLETIK!";
+                                            document.getElementById('hud-msg').style.color = "#ffffff";
+                                        }, 1200);
+                                    } else {
+                                        isP2Alive = false;
+                                        carP2.visible = false; 
+                                        hudP2.style.opacity = '0.3';
+                                        speedUI_P2.innerText = "HANCUR";
+                                        playSound('crash');
+                                        checkGameStatus();
+                                    }
+                                }
+                            }
+
+                            if (obs.position.z > 12) {
+                                resetObject(obs, -60);
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.error("Terjadi error di dalam game loop:", err);
+                }
+
+                renderer.render(scene, camera);
+            }
+
+            function checkGameStatus() {
+                if (!isP1Alive && !isP2Alive) {
+                    isPlaying = false;
+                    
+                    let winMessage = "";
+                    if (isTwoPlayerMode) {
+                        if (scoreP1 > scoreP2) {
+                            winMessage = `🥇 PLAYER 1 (PINK) MENANG!<br><span style="font-size:1.1rem; color:#aaa;">P1: ${scoreP1} poin | P2: ${scoreP2} poin</span>`;
+                        } else if (scoreP2 > scoreP1) {
+                            winMessage = `🥇 PLAYER 2 (BLUE) MENANG!<br><span style="font-size:1.1rem; color:#aaa;">P2: ${scoreP2} poin | P1: ${scoreP1} poin</span>`;
+                        } else {
+                            winMessage = `🏆 BALAPAN SERI (HASIL SEIMBANG)!<br><span style="font-size:1.1rem; color:#aaa;">Kedua pemain mendapat ${scoreP1} poin</span>`;
+                        }
+                    } else {
+                        winMessage = `🚨 GAME OVER! Mobilmu Hancur!<br><span style="font-size:1.1rem; color:#aaa;">Skor Akhir Kamu: ${scoreP1} poin</span>`;
+                    }
+
+                    mainMenu.style.display = 'block';
+                    document.querySelector('#main-menu h1').innerHTML = "🏁 BALAPAN SELESAI";
+                    document.querySelector('#main-menu .instructions').innerHTML = `
+                        <div style="text-align:center; padding: 10px 0;">
+                            <p style="font-size:1.4rem; font-weight:bold; color:#00ffcc; line-height: 1.4;">${winMessage}</p>
+                            <p style="font-size:0.85rem; color:#aaa; font-style:italic; margin-top: 15px;">Tips: Kecilkan skala mobilmu menjadi 0.6 saat gawang mendekat agar kamu bisa meluncur menyelinap bebas di bawah kolong gawang!</p>
+                        </div>
+                    `;
+                }
+            }
+
+            // Memulai game loop pertama kali
+            animate();
+        };
+    </script>
+</body>
+</html>
